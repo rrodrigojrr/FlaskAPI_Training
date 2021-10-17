@@ -4,17 +4,18 @@ from flask_marshmallow import Schema
 from flask_restful import Resource, Api
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
-from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SECRET_KEY'] = 'secret'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 api = Api(app)
 jwt = JWTManager(app)
+
 
 class UserModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -22,21 +23,23 @@ class UserModel(db.Model):
     email = db.Column(db.String(25), nullable=False, unique=True)
     password = db.Column(db.String(20), nullable=False)
 
-
     def check_rash(self, password):
         return check_password_hash(self.password, password)
+
 
 class UserSchema(Schema):
     class Meta:
         fields = ['username', 'email']
 
+
 User_schema = UserSchema()
 
-class UserMethods(Resource):
 
+class UserMethods(Resource):
+    @jwt_required()
     def get(self):
         if not request.args:
-            return {'Msg' : 'Select an id!'}
+            return {'Msg': 'Select an id!'}
 
         id = request.args['id']
         result = User_schema.dump(
@@ -45,6 +48,7 @@ class UserMethods(Resource):
 
         return jsonify(result)
 
+    @jwt_required()
     def post(self):
         if not request.json:
             return {'Msg': 'Data is missing'}
@@ -62,7 +66,8 @@ class UserMethods(Resource):
         db.session.add(user)
         db.session.commit()
 
-        return {'Msg' : 'User included!'}
+        return {'Msg': 'User included!'}
+
 
 class LoginMethods(Resource):
 
@@ -86,4 +91,3 @@ api.add_resource(LoginMethods, '/login')
 
 if __name__ == '__main__':
     app.run(debug=True)
-
